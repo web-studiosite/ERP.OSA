@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-MZ">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OSA — Official Shop Administrator</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏪</text></svg>">
+</head>
+<body>
+  <div class="osa-login">
+    <div class="osa-login__card">
+      <div class="osa-login__brand">
+        <div class="osa-login__logo">OSA</div>
+        <div class="osa-login__subtitle">Official Shop Administrator</div>
+      </div>
+
+      <div class="osa-login__error" id="login-error"></div>
+
+      <form class="osa-login__form" id="login-form">
+        <div class="osa-form__group">
+          <label for="login-email">Email</label>
+          <input type="email" id="login-email" name="email" required autocomplete="email" placeholder="seu@email.com">
+        </div>
+        <div class="osa-form__group">
+          <label for="login-password">Senha</label>
+          <input type="password" id="login-password" name="password" required autocomplete="current-password" placeholder="••••••••">
+        </div>
+        <button type="submit" class="osa-btn osa-btn--primary osa-btn--block" id="login-btn">Entrar</button>
+      </form>
+
+      <div class="osa-login__footer">
+        OSA — Sistema de Gestão de Loja<br>
+        v1.0 · Moçambique
+      </div>
+    </div>
+  </div>
+
+  <div class="osa-notifications" id="osa-notifications"></div>
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+  <!-- OSA Core -->
+  <script src="js/config.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/ui.js"></script>
+
+  <script>
+    // Check for existing session
+    (async () => {
+      const restored = await OSA_AUTH.restoreSession();
+      if (restored && restored.ok) {
+        window.location.href = 'app.html';
+      } else if (restored && restored.error) {
+        // Show session restore error briefly (optional)
+        console.warn('[OSA] Sessão não restaurada:', restored.error);
+      }
+    })();
+
+    // Login form handler
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const errorDiv = document.getElementById('login-error');
+      const btn = document.getElementById('login-btn');
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+
+      errorDiv.style.display = 'none';
+      OSA_UI.setButtonLoading(btn, true);
+
+      try {
+        const res = await OSA_AUTH.login(email, password);
+
+        if (res.ok) {
+          window.location.href = 'app.html';
+        } else {
+          errorDiv.textContent = res.error || 'Credenciais inválidas';
+          errorDiv.style.display = 'block';
+        }
+      } catch (err) {
+        errorDiv.textContent = err.message || 'Erro de conexão';
+        errorDiv.style.display = 'block';
+      }
+
+      OSA_UI.setButtonLoading(btn, false);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-MZ">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OSA — Painel de Gestão</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏪</text></svg>">
+</head>
+<body>
+  <div class="osa-app">
+    <!-- Sidebar -->
+    <aside class="osa-sidebar" id="osa-sidebar"></aside>
+    <div class="osa-sidebar-overlay" id="osa-sidebar-overlay" onclick="OSA_NAV.toggleSidebar(true)"></div>
+
+    <!-- Main -->
+    <div class="osa-main" id="osa-main">
+      <!-- Topbar -->
+      <header class="osa-topbar" id="osa-topbar"></header>
+
+      <!-- Content -->
+      <div class="osa-content">
+        <div id="module-content">
+          <div class="osa-loading"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notifications -->
+  <div class="osa-notifications" id="osa-notifications"></div>
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+
+  <!-- OSA Core -->
+  <script src="js/config.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/nav.js"></script>
+
+  <!-- OSA Modules -->
+  <script src="js/modules/stock.js"></script>
+  <script src="js/modules/products.js"></script>
+  <script src="js/modules/categories.js"></script>
+  <script src="js/modules/transfers.js"></script>
+  <script src="js/modules/sales.js"></script>
+  <script src="js/modules/cash.js"></script>
+  <script src="js/modules/inventory.js"></script>
+  <script src="js/modules/losses.js"></script>
+  <script src="js/modules/thefts.js"></script>
+  <script src="js/modules/fuel.js"></script>
+  <script src="js/modules/reports.js"></script>
+  <script src="js/modules/closings.js"></script>
+  <script src="js/modules/settings.js"></script>
+  <script src="js/modules/audit.js"></script>
+  <script src="js/modules/diagnostics.js"></script>
+
+  <!-- Dashboard -->
+  <script src="js/dashboard.js"></script>
+
+  <script>
+    // Initialize app — check session first
+    (async () => {
+      const restored = await OSA_AUTH.restoreSession();
+
+      if (!restored || !restored.ok) {
+        // Clear any stale session data and redirect to login
+        localStorage.removeItem('osa_session');
+        document.getElementById('module-content').innerHTML =
+          '<div class="osa-alert osa-alert--error" style="margin:2rem">Sessão expirada ou inválida. A redirecionar para o login...</div>';
+        setTimeout(() => { window.location.href = 'index.html'; }, 1500);
+        return;
+      }
+
+      // Validate profile loaded
+      if (!OSA_AUTH.getCurrentProfile()) {
+        document.getElementById('module-content').innerHTML =
+          '<div class="osa-alert osa-alert--error" style="margin:2rem">Perfil de utilizador não encontrado. A redirecionar para o login...</div>';
+        await OSA_AUTH.logout();
+        setTimeout(() => { window.location.href = 'index.html'; }, 1500);
+        return;
+      }
+
+      // Initialize navigation and dashboard
+      OSA_NAV.init();
+    })();
+  </script>
+</body>
+</html>

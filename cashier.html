@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-MZ">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OSA — Caixa</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏪</text></svg>">
+  <style>
+    /* Cashier-specific overrides */
+    .osa-cashier-nav {
+      display: flex;
+      gap: 8px;
+      padding: 8px 20px;
+      background: var(--osa-gray-100);
+      border-bottom: 1px solid var(--osa-gray-200);
+    }
+    .osa-cashier-nav button {
+      padding: 8px 20px;
+      border: 1px solid var(--osa-gray-300);
+      border-radius: var(--osa-radius);
+      background: #fff;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: all var(--osa-transition);
+    }
+    .osa-cashier-nav button:hover { background: var(--osa-gray-50); }
+    .osa-cashier-nav button.active { background: var(--osa-accent); color: #fff; border-color: var(--osa-accent); }
+  </style>
+</head>
+<body>
+  <div class="osa-cashier">
+    <!-- Header -->
+    <div class="osa-cashier__header">
+      <div class="osa-cashier__brand">🏪 OSA — Caixa</div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span id="cashier-name" style="font-size:0.85rem"></span>
+        <button onclick="OSA_AUTH.logout()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;padding:6px 12px;border-radius:var(--osa-radius-sm);cursor:pointer;font-size:0.8rem">Sair</button>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="osa-cashier-nav">
+      <button class="active" onclick="switchCashierTab('sales', this)">🛒 Vender</button>
+      <button onclick="switchCashierTab('history', this)">📋 Histórico</button>
+      <button onclick="switchCashierTab('cash', this)">💰 Caixa</button>
+    </div>
+
+    <!-- Content -->
+    <div class="osa-cashier__content">
+      <div id="cashier-content">
+        <div class="osa-loading"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notifications -->
+  <div class="osa-notifications" id="osa-notifications"></div>
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+  <!-- OSA Core -->
+  <script src="js/config.js"></script>
+  <script src="js/supabase.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/ui.js"></script>
+
+  <!-- Cashier modules only -->
+  <script src="js/modules/sales.js"></script>
+  <script src="js/modules/cash.js"></script>
+  <script src="js/modules/stock.js"></script>
+
+  <script>
+    let currentTab = 'sales';
+
+    function switchCashierTab(tab, btn) {
+      currentTab = tab;
+      document.querySelectorAll('.osa-cashier-nav button').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      renderCashierContent();
+    }
+
+    function renderCashierContent() {
+      switch (currentTab) {
+        case 'sales':
+          OSA_SALES.renderPOS('cashier-content');
+          break;
+        case 'history':
+          OSA_SALES.renderHistory('cashier-content');
+          break;
+        case 'cash':
+          OSA_CASH.renderRegister('cashier-content');
+          break;
+      }
+    }
+
+    // Initialize
+    (async () => {
+      const restored = await OSA_AUTH.restoreSession();
+
+      if (!restored) {
+        window.location.href = 'index.html';
+        return;
+      }
+
+      // Show cashier name
+      const profile = OSA_AUTH.getProfile();
+      const nameEl = document.getElementById('cashier-name');
+      if (nameEl) nameEl.textContent = profile?.full_name || OSA_AUTH.getCurrentUser()?.email || '';
+
+      renderCashierContent();
+    })();
+  </script>
+</body>
+</html>

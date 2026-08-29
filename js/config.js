@@ -5,8 +5,8 @@
 
 const OSA_CONFIG = {
   // Supabase — REPLACE with your own project credentials
-  SUPABASE_URL: '',
-  SUPABASE_ANON_KEY: '',
+  SUPABASE_URL: 'https://fobmpeqvtdpjjzbuobzq.supabase.co',
+  SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvYm1wZXF2dGRwamp6YnVvYnpxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgwMDg3NDUsImV4cCI6MjEwMzU4NDc0NX0.0Tu9Tp0XxLVGjDnpUCOKX-xLju1ueu64DfRdNl5rVDg',
 
   // App metadata
   APP_NAME: 'OSA',

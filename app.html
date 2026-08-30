@@ -61,10 +61,65 @@
   <script src="js/modules/audit.js"></script>
   <script src="js/modules/diagnostics.js"></script>
 
-  <!-- Dashboard -->
-  <script src="js/dashboard.js"></script>
+<!-- Dashboard -->
+<script src="js/dashboard.js"></script>
 
-  <script>
+<!-- Registro dos módulos -->
+<script>
+  window.OSA_MODULES = {
+    OSA_DASHBOARD: OSA_DASHBOARD,
+    OSA_SALES: OSA_SALES,
+    OSA_PRODUCTS: OSA_PRODUCTS,
+    OSA_CATEGORIES: OSA_CATEGORIES,
+    OSA_STOCK: OSA_STOCK,
+    OSA_TRANSFERS: OSA_TRANSFERS,
+    OSA_CASH: OSA_CASH,
+    OSA_INVENTORY: OSA_INVENTORY,
+    OSA_LOSSES: OSA_LOSSES,
+    OSA_THEFTS: OSA_THEFTS,
+    OSA_FUEL: OSA_FUEL,
+    OSA_CLOSINGS: OSA_CLOSINGS,
+    OSA_REPORTS: OSA_REPORTS,
+    OSA_AUDIT: OSA_AUDIT,
+    OSA_SETTINGS: OSA_SETTINGS,
+    OSA_DIAGNOSTICS: OSA_DIAGNOSTICS
+  };
+</script>
+
+<script>
+  // Initialize app — check session first
+  (async () => {
+    const restored = await OSA_AUTH.restoreSession();
+
+    if (!restored || !restored.ok) {
+      localStorage.removeItem('osa_session');
+
+      document.getElementById('module-content').innerHTML =
+        '<div class="osa-alert osa-alert--error" style="margin:2rem">Sessão expirada ou inválida. A redirecionar para o login...</div>';
+
+      setTimeout(() => {
+        window.location.href = 'index.html';
+      }, 1500);
+
+      return;
+    }
+
+    if (!OSA_AUTH.getCurrentProfile()) {
+      document.getElementById('module-content').innerHTML =
+        '<div class="osa-alert osa-alert--error" style="margin:2rem">Perfil de utilizador não encontrado. A redirecionar para o login...</div>';
+
+      await OSA_AUTH.logout();
+
+      setTimeout(() => {
+        window.location.href = 'index.html';
+      }, 1500);
+
+      return;
+    }
+
+    OSA_NAV.init();
+  })();
+</script>
     // Initialize app — check session first
     (async () => {
       const restored = await OSA_AUTH.restoreSession();

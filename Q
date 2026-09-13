@@ -1,0 +1,179 @@
+-- ============================================
+-- GEF SAAS - BANCO DE DADOS V2 FINAL
+-- ============================================
+
+-- 1. EXTENSÕES
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- 2. TABELAS
+
+-- EMPRESAS
+CREATE TABLE empresas (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  nome text NOT NULL,
+  nif text,
+  telefone text,
+  email text,
+  moeda text DEFAULT 'MZN',
+  idioma text DEFAULT 'pt',
+  created_at timestamptz DEFAULT now()
+);
+
+-- STATUS DA EMPRESA - Mensalidade do SaaS
+CREATE TABLE empresas_status (
+  empresa_id uuid PRIMARY KEY REFERENCES empresas(id) ON DELETE CASCADE,
+  status text DEFAULT 'ativa',
+  plano text DEFAULT 'basico',
+  valor_mensalidade numeric(10,2) DEFAULT 1500.00,
+  data_vencimento date NOT NULL,
+  data_ultimo_pagamento date
+);
+
+-- PERFIS - SUPER ADMIN NÃO TEM empresa_id
+CREATE TABLE perfis (
+  id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  empresa_id uuid REFERENCES empresas(id) ON DELETE CASCADE, -- NULL para super_admin
+  role text NOT NULL CHECK (role IN ('super_admin', 'embaixador', 'admin', 'caixa', 'estoquista')),
+  nome text NOT NULL,
+  telefone text,
+  ativo boolean DEFAULT true,
+  created_at timestamptz DEFAULT now()
+);
+
+-- CLIENTES
+CREATE TABLE clientes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  empresa_id uuid REFERENCES empresas(id) ON DELETE CASCADE,
+  embaixador_id uuid REFERENCES perfis(id),
+  nome text NOT NULL,
+  contato text,
+  email text,
+  endereco text,
+  mensalidade_valor numeric(10,2),
+  mensalidade_dia integer CHECK (mensalidade_dia BETWEEN 1 AND 31),
+  status_assinatura text DEFAULT 'ativa',
+  created_at timestamptz DEFAULT now()
+);
+
+-- PRODUTOS
+CREATE TABLE produtos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  empresa_id uuid REFERENCES empresas(id) ON DELETE CASCADE,
+  nome text NOT NULL,
+  codigo text,
+  categoria text,
+  estoque_atual integer DEFAULT 0,
+  estoque_minimo integer DEFAULT 0,
+  custo numeric(10,2) DEFAULT 0,
+  preco_venda numeric(10,2) DEFAULT 0,
+  created_at timestamptz DEFAULT now()
+);
+
+-- VENDAS
+CREATE TABLE vendas (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  empresa_id uuid REFERENCES empresas(id) ON DELETE CASCADE,
+  cliente_id uuid REFERENCES clientes(id) ON DELETE SET NULL,
+  cliente_nome_avulso text,
+  usuario_id uuid REFERENCES perfis(id),
+  total numeric(10,2) NOT NULL,
+  forma_pagamento text,
+  observacao text,
+  created_at timestamptz DEFAULT now()
+);
+
+-- ITENS DA VENDA
+CREATE TABLE itens_venda (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  venda_id uuid REFERENCES vendas(id) ON DELETE CASCADE,
+  produto_id uuid REFERENCES produtos(id),
+  quantidade integer NOT NULL,
+  preco_unitario numeric(10,2) NOT NULL,
+  subtotal numeric(10,2) NOT NULL
+);
+
+-- CONTAS A RECEBER - FIADO
+CREATE TABLE contas_receber (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  empresa_id uuid REFERENCES empresas(id) ON DELETE CASCADE,
+  cliente_id uuid REFERENCES clientes(id) ON DELETE CASCADE,
+  venda_id uuid REFERENCES vendas(id) ON DELETE SET NULL,
+  descricao text NOT NULL,
+  valor_total numeric(10,2) NOT NULL,
+  valor_pago numeric(10,2) DEFAULT 0,
+  data_vencimento date,
+  status text DEFAULT 'aberta' CHECK (status IN ('aberta', 'paga', 'atrasada')),
+  created_at timestamptz DEFAULT now()
+);
+
+-- AMORTIZACOES
+CREATE TABLE amortizacoes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  contas_receber_id uuid REFERENCES contas_receber(id) ON DELETE CASCADE,
+  valor_pago numeric(10,2) NOT NULL,
+  data_pagamento date DEFAULT current_date,
+  forma_pagamento text,
+  observacao text
+);
+
+-- MOVIMENTAÇÕES DE ESTOQUE
+CREATE TABLE movimentacoes_estoque (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  empresa_id uuid REFERENCES empresas(id) ON DELETE CASCADE,
+  produto_id uuid REFERENCES produtos(id),
+  tipo text NOT NULL,
+  quantidade integer NOT NULL,
+  motivo text,
+  usuario_id uuid REFERENCES perfis(id),
+  created_at timestamptz DEFAULT now()
+);
+
+-- 3. RLS - ROW LEVEL SECURITY
+
+ALTER TABLE empresas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE empresas_status ENABLE ROW LEVEL SECURITY;
+ALTER TABLE perfis ENABLE ROW LEVEL SECURITY;
+ALTER TABLE clientes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE produtos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE vendas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE itens_venda ENABLE ROW LEVEL SECURITY;
+ALTER TABLE contas_receber ENABLE ROW LEVEL SECURITY;
+ALTER TABLE amortizacoes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE movimentacoes_estoque ENABLE ROW LEVEL SECURITY;
+
+-- FUNÇÃO PARA PEGAR EMPRESA DO USUARIO LOGADO
+CREATE OR REPLACE FUNCTION get_empresa_id()
+RETURNS uuid AS $$
+  SELECT empresa_id FROM perfis WHERE id = auth.uid();
+$$ LANGUAGE sql SECURITY DEFINER;
+
+-- FUNÇÃO PARA SABER SE É SUPER ADMIN
+CREATE OR REPLACE FUNCTION is_super_admin()
+RETURNS boolean AS $$
+  SELECT role = 'super_admin' FROM perfis WHERE id = auth.uid();
+$$ LANGUAGE sql SECURITY DEFINER;
+
+-- POLITICAS DE ACESSO
+
+CREATE POLICY "empresas_select" ON empresas FOR SELECT USING (id = get_empresa_id() OR is_super_admin());
+CREATE POLICY "empresas_all" ON empresas FOR ALL USING (is_super_admin());
+
+CREATE POLICY "empresas_status_all" ON empresas_status FOR ALL USING (empresa_id = get_empresa_id() OR is_super_admin());
+
+CREATE POLICY "perfis_all" ON perfis FOR ALL USING (empresa_id = get_empresa_id() OR id = auth.uid() OR is_super_admin());
+
+CREATE POLICY "dados_empresa_clientes" ON clientes FOR ALL USING (empresa_id = get_empresa_id());
+CREATE POLICY "dados_empresa_produtos" ON produtos FOR ALL USING (empresa_id = get_empresa_id());
+CREATE POLICY "dados_empresa_vendas" ON vendas FOR ALL USING (empresa_id = get_empresa_id());
+CREATE POLICY "dados_empresa_contas" ON contas_receber FOR ALL USING (empresa_id = get_empresa_id());
+CREATE POLICY "dados_empresa_estoque" ON movimentacoes_estoque FOR ALL USING (empresa_id = get_empresa_id());
+
+CREATE POLICY "itens_venda_policy" ON itens_venda FOR ALL USING (venda_id IN (SELECT id FROM vendas WHERE empresa_id = get_empresa_id()));
+CREATE POLICY "amortizacoes_policy" ON amortizacoes FOR ALL USING (contas_receber_id IN (SELECT id FROM contas_receber WHERE empresa_id = get_empresa_id()));
+
+-- 4. VIEW PARA SALDO DEVEDOR
+CREATE OR REPLACE VIEW vw_contas_receber_saldo AS
+SELECT 
+  cr.*,
+  (cr.valor_total - cr.valor_pago) as saldo_devedor
+FROM contas_receber cr;
